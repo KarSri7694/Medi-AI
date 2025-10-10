@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Markdown Stream</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; }
+        #output { border: 1px solid #ccc; padding: 15px; border-radius: 5px; min-height: 100px; white-space: pre-wrap; }
+        pre { background-color: #f4f4f4; padding: 10px; border-radius: 4px; }
+        code { font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <h1>Live Markdown from LLM</h1>
+    <div id="output"></div>
+
+    <h1>Send message: </h1>
+    <textarea id="chatInput" rows="4" cols="50" placeholder="Type your message here..."></textarea>
+    <button id="sendButton">Send</button>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <script>
+        const outputDiv = document.getElementById('output');
+        const chatInput = document.getElementById('chatInput');
+        const sendButton = document.getElementById('sendButton');
+
+        async function sendMessageAndStream() {
+            const message = chatInput.value.trim();
+            if (!message) {
+                alert("Please enter a message.");
+                return;
+            }
+
+            sendButton.disabled = true;
+            chatInput.disabled = true;
+            outputDiv.innerHTML = '<p>Receiving response...</p>';
+            let fullContent = '';
+
+            try {
+                const response = await fetch('http://127.0.0.1:8080/input', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ input: message })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    
+                    // Process Server-Sent Events (SSE) messages from the buffer
+                    let boundary = buffer.indexOf('\n\n');
+                    while (boundary !== -1) {
+                        const messageLine = buffer.substring(0, boundary);
+                        buffer = buffer.substring(boundary + 2);
+
+                        if (messageLine.startsWith('data: ')) {
+                            const jsonString = messageLine.substring(6);
+                            try {
+                                const data = JSON.parse(jsonString);
+                                if (data.token === '[DONE]') {
+                                    return; // Exit loop and finalize
+                                }
+                                fullContent += data.token;
+                                outputDiv.innerHTML = marked.parse(fullContent);
+                            } catch (e) {
+                                console.error('Failed to parse SSE JSON:', e, jsonString);
+                            }
+                        }
+                        boundary = buffer.indexOf('\n\n');
+                    }
+                }
+            } catch (err) {
+                console.error('Fetch stream failed:', err);
+                outputDiv.innerHTML = '<p style="color: red;">Error connecting to the stream.</p>';
+            } finally {
+                sendButton.disabled = false;
+                chatInput.disabled = false;
+                chatInput.value = ''; // Clear input after sending
+            }
+        }
+
+        // Trigger sending on button click
+        sendButton.addEventListener('click', sendMessageAndStream);
+
+        // Trigger sending on Enter key press (without Shift)
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault(); // Prevent new line
+                sendMessageAndStream();
+            }
+        });
+    </script>
+</body>
+</html>
