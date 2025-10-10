@@ -73,6 +73,12 @@ const UserSchema = new mongoose.Schema(
     pastSurgery: {
       type: String,
     },
+    dailyLifestyle: {
+      type: String,
+    },
+    familyMedicalHistory: {
+      type: String,
+    },
   },
   { timestamps: true },
 );
