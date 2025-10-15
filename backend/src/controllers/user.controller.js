@@ -1,5 +1,6 @@
 import { asyncHandler } from '../utils/asyscHandler.js';
 import { User } from '../models/user.model.js';
+import { MedicalHistory } from '../models/mediHistory.js';
 import { apiError } from '../utils/apiError.js';
 import { apiResponse } from '../utils/apiResponse.js';
 import jwt from 'jsonwebtoken';
@@ -21,43 +22,9 @@ const generateAccessAndRefreshToken = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  const {
-    fullName,
-    email,
-    username,
-    password,
-    age,
-    gender,
-    weight,
-    height,
-    bp,
-    ongoingMedicines,
-    diabetes,
-    cholestrol,
-    pastSurgery,
-    dailyLifestyle,
-    familyMedicalHistory,
-  } = req.body;
+  const { fullName, email, username, password } = req.body;
 
-  if (
-    [
-      fullName,
-      email,
-      username,
-      password,
-      age,
-      gender,
-      weight,
-      height,
-      bp,
-      ongoingMedicines,
-      diabetes,
-      cholestrol,
-      pastSurgery,
-      dailyLifestyle,
-      familyMedicalHistory,
-    ].some((field) => field?.trim() === '')
-  )
+  if ([fullName, email, username, password].some((field) => field?.trim() === ''))
     throw new apiError(400, 'All fields are required');
 
   const existedUser = await User.findOne({
@@ -71,17 +38,6 @@ const registerUser = asyncHandler(async (req, res) => {
     email: email.toLowerCase(),
     username: username.toLowerCase(),
     password,
-    age,
-    gender,
-    weight,
-    height,
-    bp,
-    ongoingMedicines,
-    diabetes,
-    cholestrol,
-    pastSurgery,
-    dailyLifestyle,
-    familyMedicalHistory,
   });
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
@@ -102,6 +58,64 @@ const registerUser = asyncHandler(async (req, res) => {
     .cookie('accessToken', accessToken, options)
     .cookie('refreshToken', refreshToken, options)
     .json(new apiResponse(200, createdUser, 'User registered successfully'));
+});
+
+const setMedicalHistory = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+  const user = await User.findById(userId);
+
+  if (!user) {
+    throw new apiError(404, 'No such user exists');
+  }
+
+  const {
+    age,
+    gender,
+    weight,
+    height,
+    bp,
+    ongoingMedicines,
+    diabetes,
+    cholestrol,
+    pastSurgery,
+    dailyLifestyle,
+    familyMedicalHistory,
+  } = req.body;
+
+  if (
+    [
+      age,
+      gender,
+      weight,
+      height,
+      bp,
+      ongoingMedicines,
+      diabetes,
+      cholestrol,
+      pastSurgery,
+      dailyLifestyle,
+      familyMedicalHistory,
+    ].some((field) => field?.trim === '')
+  ) {
+    throw new apiError(401, 'All these fields are required');
+  }
+
+  const UserMedicalHistory = await MedicalHistory.create({
+    owner: userId,
+    age,
+    gender,
+    weight,
+    height,
+    bp,
+    ongoingMedicines,
+    diabetes,
+    cholestrol,
+    pastSurgery,
+    dailyLifestyle,
+    familyMedicalHistory,
+  });
+
+  res.json(new apiResponse(200, UserMedicalHistory, 'Medical history saved successfully'));
 });
 
 const loginUser = asyncHandler(async (req, res) => {
@@ -261,4 +275,5 @@ export {
   refreshAccessToken,
   changeCurrentPassword,
   getCurrentUser,
+  setMedicalHistory,
 };
