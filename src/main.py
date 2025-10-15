@@ -5,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import logging
+import sqlite3
 
 # Initialize FastAPI app
 app = FastAPI()
@@ -21,45 +22,24 @@ SERVER_API_HOST = "localhost:1234"
 
 Bot_name = "Medi-AI"
 model_name = "qwen/qwen3-4b-thinking-2507"
+full_context = ""
 
-# @app.post("/chat")
-# def new_chat():
+chat_history = lms.Chat(initial_prompt=f"You are {Bot_name}, a helpful AI assistant. You are specialised in anyalysing health data and giving useful insights.\n")
+
+def connect_db():
+    # Placeholder for database connection logic
+    conn = sqlite3.connect('user_chats.db')
+    return conn
     
-#     pass
-#     raw = request.get_data(as_text=True)
-#     try:
-#         data = request.get_json(force=True)
-#     except Exception as e:
-#         app.logger.warning("Failed to parse JSON: %s; raw=%r", e, raw)
-#         return jsonify({"error": "invalid json", "details": str(e), "raw": raw}), 400
-
-#     user_message = data.get("message", "")
-#     conversation_id = data.get("conversation_id", "default")
-
-#     with lms.Client() as client:
-#         model = client.llm.model(model_name)
-#         chat = lms.Chat("")
-#         chat.add_user_message(user_message)
-#         prediction_stream = model.respond_stream(chat, on_message=chat.append)
-
-#         response_text = ""
-#         for fragment in prediction_stream:
-#             response_text += fragment.content
-
-#     return jsonify({
-#         "bot_name": Bot_name,
-#         "response": response_text,
-#         "conversation_id": conversation_id
-#     })
-
-
-async def chat(context:json):
+async def chat(input:str):
+    global chat
     async with lms.AsyncClient(api_host=SERVER_API_HOST) as client:
         model = await client.llm.model(model_name)
-        response = await model.respond_stream(context["message"])
+        chat_history.add_user_message(input)
+        response = await model.respond_stream(chat_history, on_message=chat_history.append)
         async for fragment in response:
             yield fragment.content
-    # Yield each part of the text with a small delay to simulate
+    print(chat_history, flush=True)
 
 async def sse_text_streamer(context):
     """
@@ -75,17 +55,10 @@ async def sse_text_streamer(context):
     # Signal the end of the stream
     yield f"data: {json.dumps({'token': '[DONE]'})}\n\n"
 
-# @app.get("/stream")
-# async def stream_endpoint(request: Request):
-#     """
-#     The main API endpoint that the frontend will connect to.
-#     """
-    
-#     return StreamingResponse(sse_text_streamer(), media_type="text/event-stream")
-
 @app.post("/input")
 async def receive_input(request: Request):
     data = await request.json()
+    global full_context
+    user_id = data.get("user_id", "anonymous")
     user_input = data.get("input", "")
-    #to be implemented later
-    return StreamingResponse(sse_text_streamer(context={"message": user_input}), media_type="text/event-stream")
+    return StreamingResponse(sse_text_streamer(user_input), media_type="text/event-stream")
