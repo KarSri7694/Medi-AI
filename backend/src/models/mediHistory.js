@@ -57,4 +57,4 @@ const MedicalHistorySchema = new mongoose.Schema(
 
 MedicalHistorySchema.plugin(mongooseAggregatePaginate);
 
-export const Video = mongoose.model('MedicalHistory', MedicalHistorySchema);
+export const MedicalHistory = mongoose.model('MedicalHistory', MedicalHistorySchema);
