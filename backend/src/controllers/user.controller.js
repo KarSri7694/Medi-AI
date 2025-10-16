@@ -42,7 +42,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const { accessToken, refreshToken } = await generateAccessAndRefreshToken(user._id);
 
-  const createdUser = await User.findById(user._id).select('-password - refreshToken');
+  const createdUser = await User.findById(user._id).select('-password -refreshToken');
 
   if (!createdUser) {
     throw new apiError(500, 'Something went wrong while registring the user');
@@ -50,7 +50,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const options = {
     httpOnly: true,
-    secure: true,
+    secure: false,
   };
 
   return res
