@@ -95,7 +95,7 @@ const setMedicalHistory = asyncHandler(async (req, res) => {
       pastSurgery,
       dailyLifestyle,
       familyMedicalHistory,
-    ].some((field) => field?.trim === '')
+    ].some((field) => (typeof field === 'string' ? field.trim() === '' : field == null))
   ) {
     throw new apiError(401, 'All these fields are required');
   }
@@ -125,7 +125,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new apiError(400, 'email/ username is required');
   }
 
-  const existedUser = await user.findOne({
+  const existedUser = await User.findOne({
     $or: [{ username }, { email }],
   });
 
@@ -211,11 +211,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const user = await User.findById(decodedRefreshToken?._id);
 
     if (!user) {
-      throw new ApiError(401, 'Invalid refresh token');
+      throw new apiError(401, 'Invalid refresh token');
     }
 
     if (incomingRefreshToken !== user?.refreshToken) {
-      throw new ApiError(401, 'Refresh token is expired or used');
+      throw new apiError(401, 'Refresh token is expired or used');
     }
 
     const options = {
@@ -251,7 +251,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   const user = await User.findById(req.user?._id);
 
-  const isPasswordCorrect = user.isPasswordCorrect(oldPassword);
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
   if (!isPasswordCorrect) {
     throw new apiError(401, 'Invalid old password');
@@ -261,7 +261,7 @@ const changeCurrentPassword = asyncHandler(async (req, res) => {
 
   await user.save({ validateBeforeSave: false });
 
-  return res.status(200).json(new apiResponse(200, {}, 'Passwors changed successfully'));
+  return res.status(200).json(new apiResponse(200, {}, 'Password changed successfully'));
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
