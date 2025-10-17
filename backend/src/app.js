@@ -19,11 +19,11 @@ app.use(cookieParser());
 //routes import
 import startupRouter from './routes/startup.route.js';
 import userRouter from './routes/user.route.js';
-import mediChatRouter from './routes/user.route.js';
+import mediChatRouter from './routes/medicalChat.route.js';
 
 //routes declaration
 app.use('/api/v1/user', userRouter);
-app.use('/api/vi/medi-chat', mediChatRouter);
+app.use('/api/v1/medi-chat', mediChatRouter);
 
-// http://localhost:5000/api/v1/home/
+// http://localhost:5000/api/v1
 export { app };
